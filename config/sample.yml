@@ -1,0 +1,18 @@
+mapping:
+  event_name: Namespace/CustomDomainEvent
+
+rabbit:
+  host: 127.0.0.1
+  port: 5672
+  user: guest
+  pass: guest
+
+  exchange:
+    name: domain-events
+    type: direct
+
+  queue:
+    name: domain-events-test
+    bindings:
+      - event_1
+      - event_2

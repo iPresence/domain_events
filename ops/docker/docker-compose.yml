@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  phpfarm:
+    build: phpfarm
+    volumes:
+      - ../../:/app/domain-events
+    links:
+      - rabbit
+
+  rabbit:
+    image: rabbitmq:3.7-management-alpine
+    ports:
+      - "15672:15672"

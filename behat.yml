@@ -1,0 +1,6 @@
+default:
+  suites:
+    domain:
+      paths: [ "%paths.base%/tests/behat" ]
+      contexts:
+          - behat\IPresence\DomainEvents\DomainEventsContext

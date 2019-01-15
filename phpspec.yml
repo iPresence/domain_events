@@ -1,0 +1,5 @@
+suites:
+  default:
+    namespace: IPresence\DomainEvents\
+    psr4_prefix: IPresence\DomainEvents\
+    spec_path: %paths.config%/tests
