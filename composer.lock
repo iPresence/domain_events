@@ -4,8 +4,41 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7513782670c623fa97cfc7fd1c7433cf",
+    "content-hash": "bcf41bbafa8b8af1f508e1018c60924e",
     "packages": [
+        {
+            "name": "ipresence/monitoring",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/iPresence/monitoring.git",
+                "reference": "213735fcc31ae93df69fbb130038ff714f3de790"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/iPresence/monitoring/zipball/213735fcc31ae93df69fbb130038ff714f3de790",
+                "reference": "213735fcc31ae93df69fbb130038ff714f3de790",
+                "shasum": ""
+            },
+            "require-dev": {
+                "phpspec/phpspec": "^5.1",
+                "pluggit/monitoring": "^2.3",
+                "symfony/config": "^4.2",
+                "symfony/dependency-injection": "^4.2",
+                "symfony/http-kernel": "^4.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "IPresence\\Monitoring\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "time": "2019-01-16T14:44:03+00:00"
+        },
         {
             "name": "paragonie/random_compat",
             "version": "v9.99.99",
@@ -2030,8 +2063,10 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": [],
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "ipresence/monitoring": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

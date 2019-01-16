@@ -123,6 +123,5 @@ class Listener
             $this->monitor->end('domain_event.consumed', ['success' => false]);
             $this->logger->error("Domain Event {$event->name()} received, notifying subscribers");
         }
-
     }
 }
