@@ -1,5 +1,5 @@
 {
-    "name": "library/domain_events",
+    "name": "ipresence/domain_events",
     "type": "library",
     "license": "proprietary",
     "require": {
@@ -21,6 +21,7 @@
     "require-dev": {
         "phpspec/phpspec": "2.4.1",
         "php-amqplib/php-amqplib": "^2.6",
-        "behat/behat": "^3.3"
+        "behat/behat": "^3.3",
+        "symfony/dependency-injection": "^4.2"
     }
 }

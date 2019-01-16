@@ -14,11 +14,6 @@ class RabbitMQConsumer
     private $connection;
 
     /**
-     * @var DomainEventFactory
-     */
-    private $factory;
-
-    /**
      * @var RabbitMQConsumerConfig
      */
     private $config;
@@ -30,16 +25,11 @@ class RabbitMQConsumer
 
     /**
      * @param RabbitMQLazyConnection $connection
-     * @param DomainEventFactory     $factory
      * @param RabbitMQConsumerConfig $config
      */
-    public function __construct(
-        RabbitMQLazyConnection $connection,
-        DomainEventFactory $factory,
-        RabbitMQConsumerConfig $config
-    ) {
+    public function __construct(RabbitMQLazyConnection $connection, RabbitMQConsumerConfig $config)
+    {
         $this->connection = $connection;
-        $this->factory = $factory;
         $this->config = $config;
     }
 
@@ -56,7 +46,7 @@ class RabbitMQConsumer
     {
         $channel = $this->connection->channel();
         $callable = function(AMQPMessage $message) use ($callback) {
-            call_user_func($callback, $this->factory->fromJSON($message->body));
+            call_user_func($callback, $message->body);
             $message->delivery_info['channel']->basic_ack($message->delivery_info['delivery_tag']);
         };
 

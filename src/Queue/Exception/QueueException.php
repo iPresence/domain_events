@@ -2,6 +2,6 @@
 
 namespace IPresence\DomainEvents\Queue\Exception;
 
-class GracefulStopException extends \Exception
+class QueueException extends \Exception
 {
 }

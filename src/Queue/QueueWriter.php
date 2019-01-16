@@ -3,14 +3,14 @@
 namespace IPresence\DomainEvents\Queue;
 
 use IPresence\DomainEvents\DomainEvent;
-use IPresence\DomainEvents\Queue\Exception\WriterException;
+use IPresence\DomainEvents\Queue\Exception\QueueException;
 
 interface QueueWriter
 {
     /**
      * @param DomainEvent[] $events
      *
-     * @throws WriterException
+     * @throws QueueException
      */
     public function write(array $events);
 }

@@ -4,7 +4,7 @@ namespace IPresence\DomainEvents\Publisher;
 
 use Exception;
 use IPresence\DomainEvents\DomainEvent;
-use IPresence\DomainEvents\Queue\Exception\WriterException;
+use IPresence\DomainEvents\Queue\Exception\QueueException;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use Psr\Log\LoggerInterface;
 
@@ -52,8 +52,6 @@ class Publisher
 
     /**
      * Publishes all the added events to the queue.
-     *
-     * @throws WriterException
      */
     public function publish()
     {
@@ -61,28 +59,33 @@ class Publisher
             return;
         }
 
-        $this->write();
+        try {
+            $this->write($this->events);
+            $this->events = [];
+        } catch (QueueException $e) {
+            $this->logger->error("Exception while writing to the queue", ['exception' => $e->getMessage()]);
+        }
+
     }
 
     /**
      * Tries to write into the queue and retries if failed.
      *
-     * @param int $retries
+     * @param array $events
+     * @param int   $retries
      *
-     * @throws WriterException
+     * @throws QueueException
      */
-    private function write($retries = 0)
+    private function write(array $events, $retries = 0)
     {
         if ($retries > $this->retries) {
-            $this->logger->error("Impossible to write to the queue after $retries retries");
-            // TODO: decide alternative in case of failure
-            return;
+            throw new QueueException("Impossible to write to the queue after $retries retries, storing the events");
         }
 
         try {
-            $this->writer->write($this->events);
+            $this->writer->write($events);
         } catch (Exception $e) {
-            $this->write($retries+1);
+            $this->write($events, $retries+1);
         }
     }
 }

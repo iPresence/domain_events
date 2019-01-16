@@ -122,9 +122,9 @@ class RabbitMQBuilder
     }
 
     /**
-     * @return RabbitMQReader
+     * @return RabbitMQQueue
      */
-    public function buildReader(): RabbitMQReader
+    public function buildReader(): RabbitMQQueue
     {
         if (!$this->exchange) {
             throw new RuntimeException("You need to provide a configuration");
@@ -140,7 +140,7 @@ class RabbitMQBuilder
             $this->logger = new NullLogger();
         }
 
-        return new RabbitMQReader($this->exchange, $this->queue, $this->consumer, $this->logger);
+        return new RabbitMQQueue($this->exchange, $this->queue, $this->consumer, $this->logger);
     }
 
     /**

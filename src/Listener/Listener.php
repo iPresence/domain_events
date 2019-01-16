@@ -2,9 +2,8 @@
 
 namespace IPresence\DomainEvents\Listener;
 
-use IPresence\DomainEvents\DomainEvent;
-use IPresence\DomainEvents\Queue\Exception\GracefulStopException;
-use IPresence\DomainEvents\Queue\Exception\ReaderException;
+use Exception;
+use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Queue\Exception\TimeoutException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use Psr\Log\LoggerInterface;
@@ -15,6 +14,11 @@ class Listener
      * @var QueueReader
      */
     private $reader;
+
+    /**
+     * @var DomainEventFactory
+     */
+    private $factory;
 
     /**
      * @var LoggerInterface
@@ -28,12 +32,18 @@ class Listener
 
     /**
      * @param QueueReader             $reader
+     * @param DomainEventFactory      $factory
      * @param LoggerInterface         $logger
      * @param DomainEventSubscriber[] $subscribers
      */
-    public function __construct(QueueReader $reader, LoggerInterface $logger, array $subscribers = [])
-    {
+    public function __construct(
+        QueueReader $reader,
+        DomainEventFactory $factory,
+        LoggerInterface $logger,
+        array $subscribers = []
+    ) {
         $this->reader = $reader;
+        $this->factory = $factory;
         $this->logger = $logger;
         $this->subscribers = $subscribers;
     }
@@ -51,8 +61,6 @@ class Listener
 
     /**
      * @param int $timeout
-     *
-     * @throws ReaderException
      */
     public function listen($timeout = 0)
     {
@@ -60,18 +68,23 @@ class Listener
             try {
                 $this->reader->read([$this, 'notify'], $timeout);
             } catch (TimeoutException $e) {
+                $this->logger->error('Timeout while listening for events', ['exception' => $e->getMessage()]);
                 break;
-            } catch (GracefulStopException $e) {
-                break;
+            } catch (Exception $e) {
+                $this->logger->error('Not controllable exception, discarding the event', ['exception' => $e->getMessage()]);
             }
         }
     }
 
     /**
-     * @param DomainEvent $event
+     * @param string $json
+     *
+     * @throws Exception
      */
-    public function notify(DomainEvent $event)
+    public function notify(string $json)
     {
+        $event = $this->factory->fromJSON($json);
+
         $this->logger->debug("Domain Event {$event->name()} received, notifying subscribers");
         foreach ($this->subscribers as $subscriber) {
             if ($subscriber->isSubscribed($event)) {

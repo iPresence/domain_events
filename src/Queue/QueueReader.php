@@ -2,8 +2,7 @@
 
 namespace IPresence\DomainEvents\Queue;
 
-use IPresence\DomainEvents\Queue\Exception\GracefulStopException;
-use IPresence\DomainEvents\Queue\Exception\ReaderException;
+use IPresence\DomainEvents\Queue\Exception\QueueException;
 use IPresence\DomainEvents\Queue\Exception\TimeoutException;
 
 interface QueueReader
@@ -13,8 +12,7 @@ interface QueueReader
      * @param int      $timeout
      *
      * @throws TimeoutException
-     * @throws GracefulStopException
-     * @throws ReaderException
+     * @throws QueueException
      */
     public function read(callable $callback, $timeout = 0);
 }
