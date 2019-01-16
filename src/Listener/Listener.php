@@ -6,6 +6,7 @@ use Exception;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Queue\Exception\TimeoutException;
 use IPresence\DomainEvents\Queue\QueueReader;
+use IPresence\Monitoring\Monitor;
 use Psr\Log\LoggerInterface;
 
 class Listener
@@ -21,6 +22,11 @@ class Listener
     private $factory;
 
     /**
+     * @var Monitor
+     */
+    private $monitor;
+
+    /**
      * @var LoggerInterface
      */
     private $logger;
@@ -33,17 +39,20 @@ class Listener
     /**
      * @param QueueReader             $reader
      * @param DomainEventFactory      $factory
+     * @param Monitor                 $monitor
      * @param LoggerInterface         $logger
      * @param DomainEventSubscriber[] $subscribers
      */
     public function __construct(
         QueueReader $reader,
         DomainEventFactory $factory,
+        Monitor $monitor,
         LoggerInterface $logger,
         array $subscribers = []
     ) {
         $this->reader = $reader;
         $this->factory = $factory;
+        $this->monitor = $monitor;
         $this->logger = $logger;
         $this->subscribers = $subscribers;
     }
@@ -85,7 +94,9 @@ class Listener
     {
         $event = $this->factory->fromJSON($json);
 
+        $this->monitor->increment('domain_event.received', ['name' => $event->name()]);
         $this->logger->debug("Domain Event {$event->name()} received, notifying subscribers");
+
         foreach ($this->subscribers as $subscriber) {
             if ($subscriber->isSubscribed($event)) {
                 $subscriber->execute($event);

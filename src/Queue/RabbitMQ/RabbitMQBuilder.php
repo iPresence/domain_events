@@ -2,12 +2,11 @@
 
 namespace IPresence\DomainEvents\Queue\RabbitMQ;
 
-use IPresence\DomainEvents\DomainEventFactory;
-use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer;
+use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumerConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange;
+use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange as Exchange;
 use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchangeConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue;
+use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueueConfig;
 use PhpAmqpLib\Connection\AMQPLazyConnection;
 use Psr\Log\LoggerInterface;
@@ -17,17 +16,17 @@ use RuntimeException;
 class RabbitMQBuilder
 {
     /**
-     * @var RabbitMQExchange
+     * @var Exchange
      */
     private $exchange;
 
     /**
-     * @var RabbitMQQueue
+     * @var Queue
      */
     private $queue;
 
     /**
-     * @var RabbitMQConsumer
+     * @var Consumer
      */
     private $consumer;
 
@@ -62,7 +61,7 @@ class RabbitMQBuilder
         );
 
         $exchange = $this->getParamOrFail($config, 'exchange');
-        $this->exchange = new RabbitMQExchange($connection, new RabbitMQExchangeConfig(
+        $this->exchange = new Exchange($connection, new RabbitMQExchangeConfig(
             $this->getParamOrFail($exchange, 'name'),
             $this->getParam($exchange, 'type', 'direct'),
             $this->getParam($exchange, 'passive', false),
@@ -71,7 +70,7 @@ class RabbitMQBuilder
         ));
 
         $queue = $this->getParamOrFail($config, 'queue');
-        $this->queue = new RabbitMQQueue($connection, new RabbitMQQueueConfig(
+        $this->queue = new Queue($connection, new RabbitMQQueueConfig(
             $this->getParamOrFail($queue, 'name'),
             $this->getParam($queue, 'bindings', []),
             $this->getParam($queue, 'passive', false),
@@ -80,10 +79,8 @@ class RabbitMQBuilder
             $this->getParam($queue, 'autoDelete', false)
         ));
 
-        $factory = new DomainEventFactory($this->getParam($config, 'mapping', []));
-
         $consumer = $this->getParam($config, 'consumer', []);
-        $this->consumer = new RabbitMQConsumer($connection, $factory, new RabbitMQConsumerConfig(
+        $this->consumer = new Consumer($connection, new RabbitMQConsumerConfig(
             $this->getParam($consumer, 'noLocal', false),
             $this->getParam($consumer, 'noAck', false),
             $this->getParam($consumer, 'exclusive', false),
@@ -106,25 +103,9 @@ class RabbitMQBuilder
     }
 
     /**
-     * @return RabbitMQWriter
-     */
-    public function buildWriter(): RabbitMQWriter
-    {
-        if (!$this->exchange) {
-            throw new RuntimeException("You need to provide a configuration");
-        }
-
-        if (!$this->logger) {
-            $this->logger = new NullLogger();
-        }
-
-        return new RabbitMQWriter($this->exchange, $this->logger);
-    }
-
-    /**
      * @return RabbitMQQueue
      */
-    public function buildReader(): RabbitMQQueue
+    public function build(): RabbitMQQueue
     {
         if (!$this->exchange) {
             throw new RuntimeException("You need to provide a configuration");

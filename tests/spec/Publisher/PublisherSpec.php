@@ -5,6 +5,7 @@ namespace spec\IPresence\DomainEvents\Publisher;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\Publisher\Publisher;
 use IPresence\DomainEvents\Queue\QueueWriter;
+use IPresence\Monitoring\Monitor;
 use PhpSpec\ObjectBehavior;
 use Prophecy\Argument;
 use Psr\Log\LoggerInterface;
@@ -14,9 +15,9 @@ use Psr\Log\LoggerInterface;
  */
 class PublisherSpec extends ObjectBehavior
 {
-    public function let(QueueWriter $writer, LoggerInterface $logger)
+    public function let(QueueWriter $writer, Monitor $monitor, LoggerInterface $logger)
     {
-        $this->beConstructedWith($writer, $logger, 3);
+        $this->beConstructedWith($writer, $monitor, $logger, 3);
     }
 
     public function it_is_initializable()
@@ -30,19 +31,35 @@ class PublisherSpec extends ObjectBehavior
         $this->publish();
     }
 
-    public function it_writes_the_added_events(QueueWriter $writer, DomainEvent $event1, DomainEvent $event2)
-    {
+    public function it_writes_the_added_events(
+        QueueWriter $writer,
+        Monitor $monitor,
+        DomainEvent $event1,
+        DomainEvent $event2
+    ) {
+        $event1->name()->willReturn('name1');
+        $event2->name()->willReturn('name2');
+
         $writer->write([$event1, $event2])->shouldBeCalled();
+        $monitor->increment('domain_events.publish', ['name' => 'name1', 'success' => true])->shouldBeCalled();
+        $monitor->increment('domain_events.publish', ['name' => 'name2', 'success' => true])->shouldBeCalled();
 
         $this->add($event1);
         $this->add($event2);
         $this->publish();
     }
 
-    public function it_retries(QueueWriter $writer, LoggerInterface $logger, DomainEvent $event)
-    {
-        $logger->error(Argument::any())->shouldBeCalled();
-        $writer->write([$event])->willThrow(new \Exception());
+    public function it_retries(
+        QueueWriter $writer,
+        Monitor $monitor,
+        LoggerInterface $logger,
+        DomainEvent $event
+    ) {
+        $event->name()->willReturn('name');
+
+        $logger->error('Exception while writing to the queue', ['exception' => 'test'])->shouldBeCalled();
+        $writer->write([$event])->willThrow(new \Exception('test'));
+        $monitor->increment('domain_events.publish', ['name' => 'name', 'success' => false])->shouldBeCalled();
 
         $this->add($event);
         $this->publish();

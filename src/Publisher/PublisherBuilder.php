@@ -5,6 +5,8 @@ namespace IPresence\DomainEvents\Publisher;
 use InvalidArgumentException;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQBuilder;
+use IPresence\Monitoring\Adapter\NullMonitor;
+use IPresence\Monitoring\Monitor;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
@@ -16,6 +18,11 @@ class PublisherBuilder
      * @var QueueWriter
      */
     private $writer;
+
+    /**
+     * @var Monitor
+     */
+    private $monitor;
 
     /**
      * @var LoggerInterface|null
@@ -56,7 +63,7 @@ class PublisherBuilder
     public function withConfig(array $config)
     {
         if (isset($config['rabbit'])) {
-            $this->writer = RabbitMQBuilder::create()->withConfig($config['rabbit'])->buildWriter();
+            $this->writer = RabbitMQBuilder::create()->withConfig($config['rabbit'])->build();
         } else {
             throw new InvalidArgumentException('The configuration is invalid, rabbit values expected');
         }
@@ -108,6 +115,20 @@ class PublisherBuilder
     }
 
     /**
+     * Sets a monitor to use
+     *
+     * @param Monitor $monitor
+     *
+     * @return $this
+     */
+    public function withMonitor(Monitor $monitor)
+    {
+        $this->monitor = $monitor;
+
+        return $this;
+    }
+
+    /**
      * Builds the publisher with the configured values
      *
      * @return Publisher
@@ -122,6 +143,10 @@ class PublisherBuilder
             $this->logger = new NullLogger();
         }
 
-        return new Publisher($this->writer, $this->logger);
+        if (!$this->monitor) {
+            $this->monitor = new NullMonitor();
+        }
+
+        return new Publisher($this->writer, $this->monitor, $this->logger);
     }
 }

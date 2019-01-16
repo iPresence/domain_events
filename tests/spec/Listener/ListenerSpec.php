@@ -7,6 +7,7 @@ use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\DomainEventSubscriber;
 use IPresence\DomainEvents\Listener\Listener;
 use IPresence\DomainEvents\Queue\QueueReader;
+use IPresence\Monitoring\Monitor;
 use PhpSpec\ObjectBehavior;
 use Psr\Log\LoggerInterface;
 
@@ -15,9 +16,9 @@ use Psr\Log\LoggerInterface;
  */
 class ListenerSpec extends ObjectBehavior
 {
-    public function let(QueueReader $reader, DomainEventFactory $factory, LoggerInterface $logger)
+    public function let(QueueReader $reader, DomainEventFactory $factory, Monitor $monitor, LoggerInterface $logger)
     {
-        $this->beConstructedWith($reader, $factory, $logger);
+        $this->beConstructedWith($reader, $factory, $monitor, $logger);
     }
 
     public function it_is_initializable()
@@ -28,12 +29,14 @@ class ListenerSpec extends ObjectBehavior
     public function it_notifies_the_subscribers(
         DomainEventSubscriber $subscriber,
         DomainEventFactory $factory,
+        Monitor $monitor,
         DomainEvent $event
     ) {
         $json = 'json';
         $factory->fromJSON($json)->willReturn($event);
 
         $event->name()->willReturn('name');
+        $monitor->increment('domain_event.received', ['name' => 'name'])->shouldBeCalled();
         $subscriber->isSubscribed($event)->shouldBeCalled();
 
         $this->subscribe($subscriber);
@@ -42,6 +45,7 @@ class ListenerSpec extends ObjectBehavior
 
     public function it_executes_just_the_subscribed_subscribers(
         DomainEventFactory $factory,
+        Monitor $monitor,
         DomainEventSubscriber $subscriber1,
         DomainEventSubscriber $subscriber2,
         DomainEventSubscriber $subscriber3,
@@ -51,6 +55,7 @@ class ListenerSpec extends ObjectBehavior
 
         $factory->fromJSON($json)->willReturn($event);
         $event->name()->willReturn('test');
+        $monitor->increment('domain_event.received', ['name' => 'test'])->shouldBeCalled();
 
         $subscriber1->isSubscribed($event)->willReturn(true);
         $subscriber2->isSubscribed($event)->willReturn(false);

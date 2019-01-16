@@ -9,31 +9,31 @@ use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\Listener;
 use IPresence\DomainEvents\Publisher\Publisher;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQLazyConnection;
-use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer;
+use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumerConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange;
+use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange as Exchange;
 use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchangeConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue;
+use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueueConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQReader;
-use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQWriter;
+use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQQueue;;
+use IPresence\Monitoring\Adapter\NullMonitor;
 use PhpAmqpLib\Connection\AMQPLazyConnection;
 use Psr\Log\NullLogger;
 
 class DomainEventsContext implements Context
 {
     /**
-     * @var RabbitMQExchange
+     * @var Exchange
      */
     private $exchange;
 
     /**
-     * @var RabbitMQQueue
+     * @var Queue
      */
     private $queue;
 
     /**
-     * @var RabbitMQConsumer
+     * @var Consumer
      */
     private $consumer;
 
@@ -56,22 +56,17 @@ class DomainEventsContext implements Context
     {
         $connection = new RabbitMQLazyConnection(new AMQPLazyConnection('rabbit', '5672', 'guest', 'guest'));
         $logger = new NullLogger();
+        $monitor = new NullMonitor();
         $factory = new DomainEventFactory();
 
-        $exchangeConfig = new RabbitMQExchangeConfig('domain-events');
-        $this->exchange = new RabbitMQExchange($connection, $exchangeConfig);
+        $this->exchange = new Exchange($connection, new RabbitMQExchangeConfig('domain-events'));
+        $this->queue = new Queue($connection, new RabbitMQQueueConfig('domain-events-test', ['test']));
+        $this->consumer = new Consumer($connection, new RabbitMQConsumerConfig());
 
-        $queueConfig = new RabbitMQQueueConfig('domain-events-test', ['test']);
-        $this->queue = new RabbitMQQueue($connection, $queueConfig);
+        $queue = new RabbitMQQueue($this->exchange, $this->queue, $this->consumer, $logger);
 
-        $consumerConfig = new RabbitMQConsumerConfig();
-        $this->consumer = new RabbitMQConsumer($connection, $factory, $consumerConfig);
-
-        $writer = new RabbitMQWriter($this->exchange, $logger);
-        $reader = new RabbitMQReader($this->exchange, $this->queue, $this->consumer, $logger);
-
-        $this->publisher = new Publisher($writer, $logger);
-        $this->listener = new Listener($reader, $logger);
+        $this->publisher = new Publisher($queue, $monitor, $logger);
+        $this->listener = new Listener($queue, $factory, $monitor, $logger);
     }
 
     /**

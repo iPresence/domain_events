@@ -3,8 +3,11 @@
 namespace IPresence\DomainEvents\Listener;
 
 use InvalidArgumentException;
+use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQBuilder;
+use IPresence\Monitoring\Adapter\NullMonitor;
+use IPresence\Monitoring\Monitor;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
@@ -16,6 +19,16 @@ class ListenerBuilder
      * @var QueueReader
      */
     private $reader;
+
+    /**
+     * @var DomainEventFactory
+     */
+    private $factory;
+
+    /**
+     * @var Monitor
+     */
+    private $monitor;
 
     /**
      * @var LoggerInterface|null
@@ -42,9 +55,13 @@ class ListenerBuilder
     public function withConfig(array $config)
     {
         if (isset($config['rabbit'])) {
-            $this->reader = RabbitMQBuilder::create()->withConfig($config['rabbit'])->buildReader();
+            $this->reader = RabbitMQBuilder::create()->withConfig($config['rabbit'])->build();
         } else {
             throw new InvalidArgumentException('The configuration is invalid, rabbit values expected');
+        }
+
+        if (isset($config['mapping'])) {
+            $this->factory = new DomainEventFactory($config['mapping']);
         }
 
         return $this;
@@ -80,6 +97,20 @@ class ListenerBuilder
     }
 
     /**
+     * Sets a monitor to use
+     *
+     * @param Monitor $monitor
+     *
+     * @return $this
+     */
+    public function withMonitor(Monitor $monitor)
+    {
+        $this->monitor = $monitor;
+
+        return $this;
+    }
+
+    /**
      * Sets a logger to use
      *
      * @param LoggerInterface $logger
@@ -104,10 +135,18 @@ class ListenerBuilder
             throw new RuntimeException("You need to provide a configuration or a queue reader");
         }
 
+        if (!$this->factory) {
+            $this->factory = new DomainEventFactory();
+        }
+
+        if (!$this->monitor) {
+            $this->monitor = new NullMonitor();
+        }
+
         if (!$this->logger) {
             $this->logger = new NullLogger();
         }
 
-        return new Listener($this->reader, $this->logger);
+        return new Listener($this->reader, $this->factory, $this->monitor, $this->logger);
     }
 }
