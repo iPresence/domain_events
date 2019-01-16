@@ -149,4 +149,20 @@ class ListenerBuilder
 
         return new Listener($this->reader, $this->factory, $this->monitor, $this->logger);
     }
+
+    /**
+     * @param array                $config
+     * @param Monitor|null         $monitor
+     * @param LoggerInterface|null $logger
+     *
+     * @return Listener
+     */
+    public static function buildFromConfig(array $config, Monitor $monitor = null, LoggerInterface $logger = null): Listener
+    {
+        return self::create()
+            ->withConfig($config)
+            ->withMonitor($monitor ?? new NullMonitor())
+            ->withLogger($logger ?? new NullLogger())
+            ->build();
+    }
 }

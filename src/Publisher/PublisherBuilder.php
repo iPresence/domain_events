@@ -149,4 +149,20 @@ class PublisherBuilder
 
         return new Publisher($this->writer, $this->monitor, $this->logger);
     }
+
+    /**
+     * @param array                $config
+     * @param Monitor|null         $monitor
+     * @param LoggerInterface|null $logger
+     *
+     * @return Publisher
+     */
+    public static function buildFromConfig(array $config, Monitor $monitor = null, LoggerInterface $logger = null): Publisher
+    {
+        return self::create()
+            ->withConfig($config)
+            ->withMonitor($monitor ?? new NullMonitor())
+            ->withLogger($logger ?? new NullLogger())
+            ->build();
+    }
 }

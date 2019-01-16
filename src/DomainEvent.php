@@ -3,6 +3,8 @@
 namespace IPresence\DomainEvents;
 
 use DateTimeImmutable;
+use Exception;
+use InvalidArgumentException;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
 
@@ -57,6 +59,8 @@ class DomainEvent implements JsonDeserializable, JsonSerializable
      * @param string            $id
      * @param bool              $deprecated
      * @param string|null       $correlationId
+     *
+     * @throws Exception
      */
     public function __construct(
         string $origin,
@@ -68,6 +72,10 @@ class DomainEvent implements JsonDeserializable, JsonSerializable
         bool $deprecated = false,
         string $correlationId = null
     ) {
+        if (empty($name)) {
+            throw new InvalidArgumentException('Domain Event name can not be empty');
+        }
+
         $this->id            = $id ?? Uuid::uuid4()->toString();
         $this->name          = $name;
         $this->origin        = $origin;
@@ -163,7 +171,7 @@ class DomainEvent implements JsonDeserializable, JsonSerializable
      * @param array $data
      *
      * @return DomainEvent
-     * @throws \Exception
+     * @throws Exception
      */
     public static function jsonDeserialize(array $data)
     {
