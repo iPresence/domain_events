@@ -3,6 +3,7 @@
 namespace IPresence\DomainEvents\Listener;
 
 use Exception;
+use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Queue\Exception\TimeoutException;
 use IPresence\DomainEvents\Queue\QueueReader;
@@ -99,8 +100,29 @@ class Listener
 
         foreach ($this->subscribers as $subscriber) {
             if ($subscriber->isSubscribed($event)) {
-                $subscriber->execute($event);
+                $this->execute($subscriber, $event);
             }
         }
+    }
+
+    /**
+     * @param DomainEventSubscriber $subscriber
+     * @param DomainEvent           $event
+     */
+    private function execute(DomainEventSubscriber $subscriber, DomainEvent $event)
+    {
+        $this->monitor->start('domain_event.consumed', [
+            'name' => $event->name(),
+            'subscriber' => get_class($subscriber),
+        ]);
+
+        try {
+            $subscriber->execute($event);
+            $this->monitor->end('domain_event.consumed', ['success' => true]);
+        } catch (Exception $e) {
+            $this->monitor->end('domain_event.consumed', ['success' => false]);
+            $this->logger->error("Domain Event {$event->name()} received, notifying subscribers");
+        }
+
     }
 }

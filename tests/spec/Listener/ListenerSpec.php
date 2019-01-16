@@ -55,7 +55,11 @@ class ListenerSpec extends ObjectBehavior
 
         $factory->fromJSON($json)->willReturn($event);
         $event->name()->willReturn('test');
+
         $monitor->increment('domain_event.received', ['name' => 'test'])->shouldBeCalled();
+        $monitor->start('domain_event.consumed', ['name' => 'test', 'subscriber' => get_class($subscriber1->getWrappedObject())])->shouldBeCalled();
+        $monitor->start('domain_event.consumed', ['name' => 'test', 'subscriber' => get_class($subscriber3->getWrappedObject())])->shouldBeCalled();
+        $monitor->end('domain_event.consumed', ['success' => true])->shouldBeCalled();
 
         $subscriber1->isSubscribed($event)->willReturn(true);
         $subscriber2->isSubscribed($event)->willReturn(false);
