@@ -109,15 +109,25 @@ provider:
       exchange:
         name: domain-events
         type: direct
+        passive: false
+        durable: true
+        autoDelete: false
     
       queue:
         name: domain-events-test
         bindings:
           - event_1
           - event_2
+        passive: false
+        durable: true
+        exclusive: false
+        autoDelete: false
     
       consumer:
-  
+        noLocal: false
+        noAck: false
+        exclusive: false
+        noWait: false
 ```
 
 * `mapping`: A key-value array with the mapping between domain event names and classes. This is used to deserialize from JSON to PHP objects
