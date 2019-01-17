@@ -1,4 +1,4 @@
-# Domain_events
+# Domain Events
 [![Build Status](https://travis-ci.org/iPresence/domain_events.svg?branch=master)](https://travis-ci.org/iPresence/domain_events)
 
 A domain event is something that happened on your application that is interesting for the business.
