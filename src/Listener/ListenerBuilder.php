@@ -46,6 +46,18 @@ class ListenerBuilder
     }
 
     /**
+     * @param QueueReader $reader
+     *
+     * @return $this
+     */
+    public function withReader(QueueReader $reader)
+    {
+        $this->reader = $reader;
+
+        return $this;
+    }
+
+    /**
      * Setups the requests configuration
      *
      * @param array $config
@@ -54,10 +66,10 @@ class ListenerBuilder
      */
     public function withConfig(array $config)
     {
-        if (isset($config['rabbit'])) {
+        if (isset($config['provider']['rabbit'])) {
             $this->reader = RabbitMQBuilder::create()->withConfig($config['rabbit'])->build();
         } else {
-            throw new InvalidArgumentException('The configuration is invalid, rabbit values expected');
+            throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
         }
 
         if (isset($config['mapping'])) {
