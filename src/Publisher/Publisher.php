@@ -87,7 +87,7 @@ class Publisher
     private function write($retries = 0)
     {
         if ($retries > $this->retries) {
-            throw new QueueException("Impossible to write to the queue after $retries retries, storing the events");
+            throw new QueueException("Impossible to write to the queue after $retries retries");
         }
 
         try {

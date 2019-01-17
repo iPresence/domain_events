@@ -67,7 +67,7 @@ class ListenerBuilder
     public function withConfig(array $config)
     {
         if (isset($config['provider']['rabbit'])) {
-            $this->reader = RabbitMQBuilder::create()->withConfig($config['rabbit'])->build();
+            $this->reader = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
         } else {
             throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
         }
