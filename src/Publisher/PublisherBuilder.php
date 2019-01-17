@@ -63,7 +63,7 @@ class PublisherBuilder
     public function withConfig(array $config)
     {
         if (isset($config['provider']['rabbit'])) {
-            $this->writer = RabbitMQBuilder::create()->withConfig($config['rabbit'])->build();
+            $this->writer = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
         } else {
             throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
         }
