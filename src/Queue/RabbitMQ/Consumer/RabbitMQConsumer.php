@@ -1,8 +1,7 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace IPresence\DomainEvents\Queue\RabbitMQ\Consumer;
 
-use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQLazyConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 

@@ -22,14 +22,17 @@ ifeq ($(IMAGES),true)
 	@docker rmi ${COMPONENT}_${CONTAINER}
 endif
 
-test: unit integration
-unit:
+test:
 	make dev
+	sleep 10
+	make unit
+	make integration
+
+unit:
 	@docker exec -t $(shell docker-compose -p ${COMPONENT} -f ops/docker/docker-compose.yml ps -q ${CONTAINER}) \
 	 ${APP_ROOT}/ops/scripts/unit.sh ${PHP_VERSION}
 
 integration:
-	make dev
 	@docker exec -t $(shell docker-compose -p ${COMPONENT} -f ops/docker/docker-compose.yml ps -q ${CONTAINER}) \
 	 ${APP_ROOT}/ops/scripts/integration.sh ${PHP_VERSION}
 

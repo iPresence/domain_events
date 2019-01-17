@@ -24,7 +24,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "spec\\IPresence\\DomainEvents\\": "tests/spec/",
+            "spec\\IPresence\\DomainEvents\\": "tests/spec/IPresence/DomainEvents/",
             "behat\\IPresence\\DomainEvents\\": "./tests/behat/bootstrap"
         }
     }

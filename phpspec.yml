@@ -1,5 +1,5 @@
+code_generation: false
 suites:
-  default:
-    namespace: IPresence\DomainEvents\
-    psr4_prefix: IPresence\DomainEvents\
-    spec_path: %paths.config%/tests
+  name:
+    spec_path: tests
+    src_path: src
