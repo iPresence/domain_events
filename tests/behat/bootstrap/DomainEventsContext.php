@@ -7,6 +7,7 @@ use behat\IPresence\DomainEvents\Mock\DomainEventSubscriberMock;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\Listener;
+use IPresence\DomainEvents\Publisher\Fallback\PublisherFileFallback;
 use IPresence\DomainEvents\Publisher\Publisher;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQLazyConnection;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
@@ -52,9 +53,25 @@ class DomainEventsContext implements Context
      */
     private $subscriber;
 
+    /**
+     * @var PublisherFileFallback
+     */
+    private $fallback;
+
     public function __construct()
     {
-        $connection = new RabbitMQLazyConnection(new AMQPLazyConnection('rabbit', '5672', 'guest', 'guest'));
+        $this->initialize();
+    }
+
+    /**
+     * @param string $rabbitHost
+     * @param string $rabbitPort
+     * @param string $rabbitUser
+     * @param string $rabbitPass
+     */
+    public function initialize($rabbitHost = 'rabbit', $rabbitPort = '5672', $rabbitUser = 'guest', $rabbitPass = 'guest')
+    {
+        $connection = new RabbitMQLazyConnection(new AMQPLazyConnection($rabbitHost, $rabbitPort, $rabbitUser, $rabbitPass));
         $logger = new NullLogger();
         $monitor = new NullMonitor();
         $factory = new DomainEventFactory();
@@ -65,7 +82,8 @@ class DomainEventsContext implements Context
 
         $queue = new RabbitMQQueue($this->exchange, $this->queue, $this->consumer, $logger);
 
-        $this->publisher = new Publisher($queue, $monitor, $logger);
+        $this->fallback = new PublisherFileFallback($factory, './');
+        $this->publisher = new Publisher($queue, $this->fallback, $monitor, $logger);
         $this->listener = new Listener($queue, $factory, $monitor, $logger);
     }
 
@@ -85,6 +103,14 @@ class DomainEventsContext implements Context
     {
         $this->subscriber = new DomainEventSubscriberMock($event);
         $this->listener->subscribe($this->subscriber);
+    }
+
+    /**
+     * @Given /^The writer is failing$/
+     */
+    public function theWriterIsFailing()
+    {
+        $this->initialize('invalid_host');
     }
 
     /**
@@ -122,6 +148,17 @@ class DomainEventsContext implements Context
         $this->listener->listen(1);
         if ($this->subscriber->wasExecuted()) {
             throw new \InvalidArgumentException('The subscriber should not be called');
+        }
+    }
+
+    /**
+     * @Then /^I have this event stored$/
+     */
+    public function iHaveThisEventStored()
+    {
+        $events = $this->fallback->restore();
+        if (count($events) != 1) {
+            throw new \InvalidArgumentException('The event should be stored in a file');
         }
     }
 }

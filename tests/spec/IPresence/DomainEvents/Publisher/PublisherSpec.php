@@ -3,6 +3,7 @@
 namespace spec\IPresence\DomainEvents\Publisher;
 
 use IPresence\DomainEvents\DomainEvent;
+use IPresence\DomainEvents\Publisher\Fallback\PublisherFallback;
 use IPresence\DomainEvents\Publisher\Publisher;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use IPresence\Monitoring\Monitor;
@@ -15,9 +16,9 @@ use Psr\Log\LoggerInterface;
  */
 class PublisherSpec extends ObjectBehavior
 {
-    public function let(QueueWriter $writer, Monitor $monitor, LoggerInterface $logger)
+    public function let(QueueWriter $writer, PublisherFallback $fallback, Monitor $monitor, LoggerInterface $logger)
     {
-        $this->beConstructedWith($writer, $monitor, $logger, 3);
+        $this->beConstructedWith($writer, $fallback, $monitor, $logger, 3);
     }
 
     public function it_is_initializable()
@@ -33,12 +34,16 @@ class PublisherSpec extends ObjectBehavior
 
     public function it_writes_the_added_events(
         QueueWriter $writer,
+        PublisherFallback $fallback,
         Monitor $monitor,
         DomainEvent $event1,
         DomainEvent $event2
     ) {
         $event1->name()->willReturn('name1');
         $event2->name()->willReturn('name2');
+
+        $fallback->restore()->willReturn([]);
+        $fallback->store(Argument::cetera())->shouldNotBeCalled();
 
         $writer->write([$event1, $event2])->shouldBeCalled();
         $monitor->increment('domain_events.publish', ['name' => 'name1', 'success' => true])->shouldBeCalled();
@@ -51,11 +56,15 @@ class PublisherSpec extends ObjectBehavior
 
     public function it_retries(
         QueueWriter $writer,
+        PublisherFallback $fallback,
         Monitor $monitor,
         LoggerInterface $logger,
         DomainEvent $event
     ) {
         $event->name()->willReturn('name');
+
+        $fallback->restore()->willReturn([]);
+        $fallback->store([$event])->shouldBeCalled();
 
         $logger->error('Exception while writing to the queue', ['exception' => 'test'])->shouldBeCalled();
         $writer->write([$event])->willThrow(new \Exception('test'));

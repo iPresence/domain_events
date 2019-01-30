@@ -3,6 +3,9 @@
 namespace IPresence\DomainEvents\Publisher;
 
 use InvalidArgumentException;
+use IPresence\DomainEvents\DomainEventFactory;
+use IPresence\DomainEvents\Publisher\Fallback\PublisherFallback;
+use IPresence\DomainEvents\Publisher\Fallback\PublisherFileFallback;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQBuilder;
 use IPresence\Monitoring\Adapter\NullMonitor;
@@ -18,6 +21,11 @@ class PublisherBuilder
      * @var QueueWriter
      */
     private $writer;
+
+    /**
+     * @var PublisherFallback
+     */
+    private $fallback;
 
     /**
      * @var Monitor
@@ -67,6 +75,9 @@ class PublisherBuilder
         } else {
             throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
         }
+
+        $factory = new DomainEventFactory($config['mapping'] ?? []);
+        $this->fallback = new PublisherFileFallback($factory);
 
         return $this;
     }
@@ -139,6 +150,10 @@ class PublisherBuilder
             throw new RuntimeException("You need to provide a configuration or a queue writer");
         }
 
+        if (!$this->fallback) {
+            $this->fallback = new PublisherFileFallback(new DomainEventFactory());
+        }
+
         if (!$this->logger) {
             $this->logger = new NullLogger();
         }
@@ -147,7 +162,7 @@ class PublisherBuilder
             $this->monitor = new NullMonitor();
         }
 
-        return new Publisher($this->writer, $this->monitor, $this->logger);
+        return new Publisher($this->writer, $this->fallback, $this->monitor, $this->logger);
     }
 
     /**
