@@ -13,9 +13,9 @@ use Psr\Log\LoggerInterface;
 class Publisher
 {
     /**
-     * @var QueueWriter
+     * @var QueueWriter[]
      */
-    private $writer;
+    private $writers;
 
     /**
      * @var PublisherFallback
@@ -35,7 +35,7 @@ class Publisher
     /**
      * @var int
      */
-    private $retries;
+    private $maxRetries;
 
     /**
      * @var DomainEvent[]
@@ -43,24 +43,24 @@ class Publisher
     private $events = [];
 
     /**
-     * @param QueueWriter       $writer
+     * @param QueueWriter[]     $writers
      * @param PublisherFallback $fallback
      * @param Monitor           $monitor
      * @param LoggerInterface   $logger
-     * @param int               $retries
+     * @param int               $maxRetries
      */
     public function __construct(
-        QueueWriter $writer,
+        array $writers,
         PublisherFallback $fallback,
         Monitor $monitor,
         LoggerInterface $logger,
-        int $retries = 3
+        int $maxRetries = 3
     ) {
-        $this->writer = $writer;
+        $this->writers = $writers;
         $this->fallback = $fallback;
         $this->monitor = $monitor;
         $this->logger = $logger;
-        $this->retries = $retries;
+        $this->maxRetries = $maxRetries;
     }
 
     /**
@@ -81,9 +81,8 @@ class Publisher
         }
 
         try {
-            $event = array_merge($this->events, $this->fallback->restore());
-            $this->write($event);
-            $this->monitor(true);
+            $events = array_merge($this->events, $this->fallback->restore());
+            $this->write($events);
             $this->events = [];
         } catch (Exception $e) {
             $this->fallback->store($this->events);
@@ -93,33 +92,57 @@ class Publisher
     }
 
     /**
-     * Tries to write into the queue and retries if failed.
-     *
-     * @param DomainEvent[] $events
-     * @param int           $retries
+     * @param array $events
      *
      * @throws QueueException
      */
-    private function write(array $events, $retries = 0)
+    private function write(array $events)
     {
-        if ($retries > $this->retries) {
-            throw new QueueException("Impossible to write to the queue after $retries retries");
+        foreach ($this->writers as $writer) {
+            if ($this->writeAndRetry($writer, $events)) {
+                $this->monitor(true, get_class($writer));
+                return;
+            }
+        }
+
+        throw new QueueException("Impossible to write to the queue");
+    }
+
+    /**
+     * Tries to write into the queue and retries if failed.
+     *
+     * @param QueueWriter   $writer
+     * @param DomainEvent[] $events
+     * @param int           $attempts
+     *
+     * @return bool
+     */
+    private function writeAndRetry(QueueWriter $writer, array $events, $attempts = 0): bool
+    {
+        if ($attempts > $this->maxRetries) {
+            return false;
         }
 
         try {
-            $this->writer->write($events);
+            $writer->write($events);
+            return true;
         } catch (QueueException $e) {
-            $this->write($events, $retries+1);
+            return $this->writeAndRetry($writer, $events, $attempts+1);
         }
     }
 
     /**
-     * @param bool $success
+     * @param bool   $success
+     * @param string $writer
      */
-    private function monitor(bool $success)
+    private function monitor(bool $success, string $writer = 'none')
     {
         foreach ($this->events as $event) {
-            $this->monitor->increment('domain_events.publish', ['name' => $event->name(), 'success' => $success]);
+            $this->monitor->increment('domain_events.publish', [
+                'name'    => $event->name(),
+                'success' => $success,
+                'writer'  => $writer,
+            ]);
         }
     }
 }
