@@ -71,13 +71,16 @@ class Listener
 
     /**
      * @param int $timeout
+     * @param int $maxIterations
      */
-    public function listen($timeout = 0)
+    public function listen($timeout = 0, $maxIterations = 0)
     {
-        while (true) {
+        $iteration = 0;
+        while ($maxIterations == 0 || $maxIterations > $iteration) {
             foreach ($this->readers as $reader) {
                 $this->read($reader, $timeout);
             }
+            $iteration++;
         }
     }
 
@@ -97,6 +100,7 @@ class Listener
                 break;
             } catch (Exception $e) {
                 $this->logger->error('Not controllable exception while reading events', ['exception' => $e->getMessage()]);
+                break;
             }
         }
     }

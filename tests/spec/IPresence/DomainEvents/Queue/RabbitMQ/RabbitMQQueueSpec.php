@@ -5,7 +5,7 @@ namespace spec\IPresence\DomainEvents\Queue\RabbitMQ;
 use Exception;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\Queue\Exception\QueueException;
-use IPresence\DomainEvents\Queue\Exception\TimeoutException;
+use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
 use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange as Exchange;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
@@ -62,6 +62,7 @@ class RabbitMQQueueSpec extends ObjectBehavior
     ) {
         $callable = function(){};
 
+        $logger->debug("Started reading events from RabbitMQ")->shouldBeCalled();
         $logger->error(Argument::cetera())->shouldBeCalled();
         $exchange->create()->willReturn('exchanged');
         $queue->createAndBindTo('exchanged')->willReturn('queue');
@@ -80,13 +81,14 @@ class RabbitMQQueueSpec extends ObjectBehavior
         $callable = function(){};
         $exception = new AMQPTimeoutException();
 
-        $logger->error(Argument::cetera())->shouldBeCalled();
+        $logger->debug("Started reading events from RabbitMQ")->shouldBeCalled();
+        $logger->debug('Timeout consuming events', Argument::cetera())->shouldBeCalled();
         $exchange->create()->willReturn('exchanged');
         $queue->createAndBindTo('exchanged')->willReturn('queue');
         $consumer->start('queue', $callable, 2)->willThrow($exception);
         $consumer->stop()->shouldBeCalled();
 
-        $this->shouldThrow(TimeoutException::class)->duringRead($callable, 2);
+        $this->shouldThrow(StopReadingException::class)->duringRead($callable, 2);
     }
 
     public function it_consumes(Exchange $exchange, Queue $queue, Consumer $consumer)

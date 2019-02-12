@@ -72,12 +72,12 @@ class RabbitMQQueue implements QueueReader, QueueWriter
             $this->consumer->start($queue, $callback, $timeout);
         } catch(AMQPTimeoutException $e) {
             $this->logger->debug('Timeout consuming events', ['exception' => $e->getMessage()]);
+            $this->consumer->stop();
             throw new StopReadingException("Timed out at $timeout seconds while reading", 0, $e);
         } catch(\Exception $e) {
             $this->logger->error('Error while consuming events', ['exception' => $e->getMessage()]);
-            throw new QueueException($e->getMessage(), $e->getCode());
-        } finally {
             $this->consumer->stop();
+            throw new QueueException($e->getMessage(), $e->getCode());
         }
     }
 
