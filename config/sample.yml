@@ -17,3 +17,8 @@ provider:
       bindings:
         - event_1
         - event_2
+
+  google:
+    project_id: ipresence
+    topic: domain-events
+    subscription: domain-events-test
