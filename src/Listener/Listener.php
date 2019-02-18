@@ -5,7 +5,7 @@ namespace IPresence\DomainEvents\Listener;
 use Exception;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
-use IPresence\DomainEvents\Queue\Exception\TimeoutException;
+use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\Monitoring\Monitor;
 use Psr\Log\LoggerInterface;
@@ -13,9 +13,9 @@ use Psr\Log\LoggerInterface;
 class Listener
 {
     /**
-     * @var QueueReader
+     * @var QueueReader[]
      */
-    private $reader;
+    private $readers;
 
     /**
      * @var DomainEventFactory
@@ -38,20 +38,20 @@ class Listener
     private $subscribers = [];
 
     /**
-     * @param QueueReader             $reader
+     * @param QueueReader[]           $readers
      * @param DomainEventFactory      $factory
      * @param Monitor                 $monitor
      * @param LoggerInterface         $logger
      * @param DomainEventSubscriber[] $subscribers
      */
     public function __construct(
-        QueueReader $reader,
+        array $readers,
         DomainEventFactory $factory,
         Monitor $monitor,
         LoggerInterface $logger,
         array $subscribers = []
     ) {
-        $this->reader = $reader;
+        $this->readers = $readers;
         $this->factory = $factory;
         $this->monitor = $monitor;
         $this->logger = $logger;
@@ -71,17 +71,36 @@ class Listener
 
     /**
      * @param int $timeout
+     * @param int $maxIterations
      */
-    public function listen($timeout = 0)
+    public function listen($timeout = 0, $maxIterations = 0)
+    {
+        $iteration = 0;
+        while ($maxIterations == 0 || $maxIterations > $iteration) {
+            foreach ($this->readers as $reader) {
+                $this->read($reader, $timeout);
+            }
+            $iteration++;
+        }
+    }
+
+    /**
+     * Reads the message from the queue.
+     * Will return when there are no more messages to consume during the $timeout time.
+     *
+     * @param QueueReader $reader
+     * @param int         $timeout
+     */
+    private function read(QueueReader $reader, int $timeout)
     {
         while (true) {
             try {
-                $this->reader->read([$this, 'notify'], $timeout);
-            } catch (TimeoutException $e) {
-                $this->logger->error('Timeout while listening for events', ['exception' => $e->getMessage()]);
+                $reader->read([$this, 'notify'], $timeout);
+            } catch(StopReadingException $e) {
                 break;
             } catch (Exception $e) {
-                $this->logger->error('Not controllable exception, discarding the event', ['exception' => $e->getMessage()]);
+                $this->logger->error('Not controllable exception while reading events', ['exception' => $e->getMessage()]);
+                break;
             }
         }
     }

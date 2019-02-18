@@ -15,7 +15,8 @@
         "behat/behat": "^3.3",
         "symfony/dependency-injection": "^4.2",
         "symfony/config": "^4.2",
-        "symfony/http-kernel": "^4.2"
+        "symfony/http-kernel": "^4.2",
+        "google/cloud-pubsub": "^1.8"
     },
     "autoload": {
         "psr-4": {

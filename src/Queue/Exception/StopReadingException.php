@@ -2,6 +2,6 @@
 
 namespace IPresence\DomainEvents\Queue\Exception;
 
-class TimeoutException extends \Exception
+class StopReadingException extends \Exception
 {
 }

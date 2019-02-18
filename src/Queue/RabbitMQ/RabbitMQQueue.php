@@ -5,7 +5,7 @@ namespace IPresence\DomainEvents\Queue\RabbitMQ;
 use Exception;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\Queue\Exception\QueueException;
-use IPresence\DomainEvents\Queue\Exception\TimeoutException;
+use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
@@ -56,11 +56,11 @@ class RabbitMQQueue implements QueueReader, QueueWriter
     }
 
     /**
-     * @param callable $callback
-     * @param int      $timeout
+     * @param callable  $callback
+     * @param int|float $timeout
      *
-     * @throws TimeoutException
      * @throws QueueException
+     * @throws StopReadingException
      */
     public function read(callable $callback, $timeout = 0)
     {
@@ -68,14 +68,15 @@ class RabbitMQQueue implements QueueReader, QueueWriter
         $queue = $this->initializeQueue($exchange);
 
         try {
+            $this->logger->debug("Started reading events from RabbitMQ");
             $this->consumer->start($queue, $callback, $timeout);
         } catch(AMQPTimeoutException $e) {
+            $this->logger->debug('Timeout consuming events', ['exception' => $e->getMessage()]);
             $this->consumer->stop();
-            $this->logger->error('Timeout when consuming events', ['exception' => $e->getMessage()]);
-            throw new TimeoutException("Timed out at $timeout seconds while reading", 0, $e);
+            throw new StopReadingException("Timed out at $timeout seconds while reading", 0, $e);
         } catch(\Exception $e) {
-            $this->consumer->stop();
             $this->logger->error('Error while consuming events', ['exception' => $e->getMessage()]);
+            $this->consumer->stop();
             throw new QueueException($e->getMessage(), $e->getCode());
         }
     }

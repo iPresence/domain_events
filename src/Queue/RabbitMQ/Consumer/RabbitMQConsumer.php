@@ -60,7 +60,10 @@ class RabbitMQConsumer
                 $callable
             );
         }
-        $channel->wait(null, false, $timeout);
+
+        while (count($channel->callbacks)) {
+            $channel->wait(null, false , $timeout);
+        }
     }
 
     /**

@@ -3,7 +3,7 @@
 namespace IPresence\DomainEvents\Queue;
 
 use IPresence\DomainEvents\Queue\Exception\QueueException;
-use IPresence\DomainEvents\Queue\Exception\TimeoutException;
+use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 
 interface QueueReader
 {
@@ -11,8 +11,8 @@ interface QueueReader
      * @param callable $callback
      * @param int      $timeout
      *
-     * @throws TimeoutException
      * @throws QueueException
+     * @throws StopReadingException
      */
     public function read(callable $callback, $timeout = 0);
 }

@@ -2,10 +2,10 @@
 
 namespace IPresence\DomainEvents\Publisher;
 
-use InvalidArgumentException;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Publisher\Fallback\PublisherFallback;
 use IPresence\DomainEvents\Publisher\Fallback\PublisherFileFallback;
+use IPresence\DomainEvents\Queue\Google\GoogleCloudBuilder;
 use IPresence\DomainEvents\Queue\QueueWriter;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQBuilder;
 use IPresence\Monitoring\Adapter\NullMonitor;
@@ -18,9 +18,9 @@ use Symfony\Component\Yaml\Yaml;
 class PublisherBuilder
 {
     /**
-     * @var QueueWriter
+     * @var QueueWriter[]
      */
-    private $writer;
+    private $writers;
 
     /**
      * @var PublisherFallback
@@ -48,15 +48,15 @@ class PublisherBuilder
     }
 
     /**
-     * Setups the writer to use to publish the events
+     * Adds a new writer to use to publish the events
      *
      * @param QueueWriter $writer
      *
      * @return $this
      */
-    public function withWriter(QueueWriter $writer)
+    public function addWriter(QueueWriter $writer)
     {
-        $this->writer = $writer;
+        $this->writers[] = $writer;
 
         return $this;
     }
@@ -71,9 +71,11 @@ class PublisherBuilder
     public function withConfig(array $config)
     {
         if (isset($config['provider']['rabbit'])) {
-            $this->writer = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
-        } else {
-            throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
+            $this->writers[] = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
+        }
+
+        if (isset($config['provider']['google'])) {
+            $this->writers[] = GoogleCloudBuilder::create()->withConfig($config['provider']['google'])->build();
         }
 
         $factory = new DomainEventFactory($config['mapping'] ?? []);
@@ -146,7 +148,7 @@ class PublisherBuilder
      */
     public function build(): Publisher
     {
-        if (!$this->writer) {
+        if (empty($this->writers)) {
             throw new RuntimeException("You need to provide a configuration or a queue writer");
         }
 
@@ -162,7 +164,7 @@ class PublisherBuilder
             $this->monitor = new NullMonitor();
         }
 
-        return new Publisher($this->writer, $this->fallback, $this->monitor, $this->logger);
+        return new Publisher($this->writers, $this->fallback, $this->monitor, $this->logger);
     }
 
     /**

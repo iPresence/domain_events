@@ -4,11 +4,13 @@ namespace behat\IPresence\DomainEvents;
 
 use Behat\Behat\Context\Context;
 use behat\IPresence\DomainEvents\Mock\DomainEventSubscriberMock;
+use Google\Cloud\PubSub\PubSubClient;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\Listener;
 use IPresence\DomainEvents\Publisher\Fallback\PublisherFileFallback;
 use IPresence\DomainEvents\Publisher\Publisher;
+use IPresence\DomainEvents\Queue\Google\GoogleCloudQueue;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQLazyConnection;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumer as Consumer;
 use IPresence\DomainEvents\Queue\RabbitMQ\Consumer\RabbitMQConsumerConfig;
@@ -16,27 +18,19 @@ use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchange as Exchange;
 use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchangeConfig;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueueConfig;
-use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQQueue;;
+use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQQueue;
 use IPresence\Monitoring\Adapter\NullMonitor;
+use IPresence\Monitoring\Monitor;
 use PhpAmqpLib\Connection\AMQPLazyConnection;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 class DomainEventsContext implements Context
 {
     /**
-     * @var Exchange
+     * @var array
      */
-    private $exchange;
-
-    /**
-     * @var Queue
-     */
-    private $queue;
-
-    /**
-     * @var Consumer
-     */
-    private $consumer;
+    private $queues = [];
 
     /**
      * @var Publisher
@@ -58,42 +52,63 @@ class DomainEventsContext implements Context
      */
     private $fallback;
 
+    /**
+     * @var DomainEventFactory
+     */
+    private $factory;
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * @var Monitor
+     */
+    private $monitor;
+
     public function __construct()
     {
-        $this->initialize();
+        $this->logger = new NullLogger();
+        $this->monitor = new NullMonitor();
+        $this->factory = new DomainEventFactory();
     }
 
     /**
-     * @param string $rabbitHost
-     * @param string $rabbitPort
-     * @param string $rabbitUser
-     * @param string $rabbitPass
+     * @Given /^I have a google queue ready to handle domain events$/
      */
-    public function initialize($rabbitHost = 'rabbit', $rabbitPort = '5672', $rabbitUser = 'guest', $rabbitPass = 'guest')
+    public function iHaveAGoogleQueueReadyToHandleDomainEvents()
     {
-        $connection = new RabbitMQLazyConnection(new AMQPLazyConnection($rabbitHost, $rabbitPort, $rabbitUser, $rabbitPass));
-        $logger = new NullLogger();
-        $monitor = new NullMonitor();
-        $factory = new DomainEventFactory();
-
-        $this->exchange = new Exchange($connection, new RabbitMQExchangeConfig('domain-events'));
-        $this->queue = new Queue($connection, new RabbitMQQueueConfig('domain-events-test', ['test']));
-        $this->consumer = new Consumer($connection, new RabbitMQConsumerConfig());
-
-        $queue = new RabbitMQQueue($this->exchange, $this->queue, $this->consumer, $logger);
-
-        $this->fallback = new PublisherFileFallback($factory, './');
-        $this->publisher = new Publisher($queue, $this->fallback, $monitor, $logger);
-        $this->listener = new Listener($queue, $factory, $monitor, $logger);
+        $this->queues[] = new GoogleCloudQueue(
+            new PubSubClient(),
+            'domain-events-test',
+            'test',
+            $this->logger
+        );
     }
 
     /**
-     * @Given /^I have a queue ready to handle domain events$/
+     * @Given /^I have a rabbit queue ready to handle domain events$/
      */
-    public function iHaveAQueueReadyToHandleDomainEvents()
+    public function iHaveARabbitQueueReadyToHandleDomainEvents()
     {
-        $exchange = $this->exchange->create();
-        $this->queue->createAndBindTo($exchange);
+        $connection = new RabbitMQLazyConnection(new AMQPLazyConnection('rabbit', '5672', 'guest', 'guest'));
+
+        $exchange = new Exchange($connection, new RabbitMQExchangeConfig('domain-events'));
+        $queue = new Queue($connection, new RabbitMQQueueConfig('domain-events-test', ['test']));
+        $consumer = new Consumer($connection, new RabbitMQConsumerConfig());
+
+        $this->queues[] = new RabbitMQQueue($exchange, $queue, $consumer, $this->logger);
+    }
+
+    /**
+     * @Given /^The writers are not working$/
+     */
+    public function theWritersAreNotWorking()
+    {
+        $this->queues = [];
+        $this->fallback = new PublisherFileFallback($this->factory, './');
+        $this->publisher = new Publisher($this->queues, $this->fallback, $this->monitor, $this->logger);
     }
 
     /**
@@ -102,15 +117,9 @@ class DomainEventsContext implements Context
     public function iAmSubscribedToEvents($event)
     {
         $this->subscriber = new DomainEventSubscriberMock($event);
-        $this->listener->subscribe($this->subscriber);
-    }
 
-    /**
-     * @Given /^The writer is failing$/
-     */
-    public function theWriterIsFailing()
-    {
-        $this->initialize('invalid_host');
+        $this->listener = new Listener($this->queues, $this->factory, $this->monitor, $this->logger);
+        $this->listener->subscribe($this->subscriber);
     }
 
     /**
@@ -118,6 +127,9 @@ class DomainEventsContext implements Context
      */
     public function iSendADomainEventWithName($name)
     {
+        $this->fallback = new PublisherFileFallback($this->factory, './');
+        $this->publisher = new Publisher($this->queues, $this->fallback, $this->monitor, $this->logger);
+
         $event = new DomainEvent(
             'test',
             $name,
@@ -134,7 +146,7 @@ class DomainEventsContext implements Context
      */
     public function iShouldConsumeThatEvent()
     {
-        $this->listener->listen(1);
+        $this->listener->listen(1, 1);
         if (!$this->subscriber->wasExecuted()) {
             throw new \InvalidArgumentException('The subscriber should be called');
         }
@@ -145,7 +157,7 @@ class DomainEventsContext implements Context
      */
     public function iShouldNotConsumeThatEvent()
     {
-        $this->listener->listen(1);
+        $this->listener->listen(1, 1);
         if ($this->subscriber->wasExecuted()) {
             throw new \InvalidArgumentException('The subscriber should not be called');
         }

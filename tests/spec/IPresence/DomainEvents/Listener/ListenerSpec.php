@@ -6,6 +6,7 @@ use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\DomainEventSubscriber;
 use IPresence\DomainEvents\Listener\Listener;
+use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\Monitoring\Monitor;
 use PhpSpec\ObjectBehavior;
@@ -16,9 +17,14 @@ use Psr\Log\LoggerInterface;
  */
 class ListenerSpec extends ObjectBehavior
 {
-    public function let(QueueReader $reader, DomainEventFactory $factory, Monitor $monitor, LoggerInterface $logger)
-    {
-        $this->beConstructedWith($reader, $factory, $monitor, $logger);
+    public function let(
+        QueueReader $reader1,
+        QueueReader $reader2,
+        DomainEventFactory $factory,
+        Monitor $monitor,
+        LoggerInterface $logger
+    ) {
+        $this->beConstructedWith([$reader1, $reader2], $factory, $monitor, $logger);
     }
 
     public function it_is_initializable()
@@ -74,5 +80,13 @@ class ListenerSpec extends ObjectBehavior
         $this->subscribe($subscriber3);
 
         $this->notify($json);
+    }
+
+    public function it_listen_for_events_in_all_readers(QueueReader $reader1, QueueReader $reader2)
+    {
+        $reader1->read([$this, 'notify'], 0)->willThrow(new StopReadingException());
+        $reader2->read([$this, 'notify'], 0)->willThrow(new StopReadingException());
+
+        $this->listen(0, 1);
     }
 }

@@ -4,6 +4,8 @@ namespace IPresence\DomainEvents\Listener;
 
 use InvalidArgumentException;
 use IPresence\DomainEvents\DomainEventFactory;
+use IPresence\DomainEvents\Queue\Google\GoogleCloudBuilder;
+use IPresence\DomainEvents\Queue\Google\GoogleCloudQueue;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQBuilder;
 use IPresence\Monitoring\Adapter\NullMonitor;
@@ -16,9 +18,9 @@ use Symfony\Component\Yaml\Yaml;
 class ListenerBuilder
 {
     /**
-     * @var QueueReader
+     * @var QueueReader[]
      */
-    private $reader;
+    private $readers;
 
     /**
      * @var DomainEventFactory
@@ -50,9 +52,9 @@ class ListenerBuilder
      *
      * @return $this
      */
-    public function withReader(QueueReader $reader)
+    public function addReader(QueueReader $reader)
     {
-        $this->reader = $reader;
+        $this->readers[] = $reader;
 
         return $this;
     }
@@ -67,9 +69,10 @@ class ListenerBuilder
     public function withConfig(array $config)
     {
         if (isset($config['provider']['rabbit'])) {
-            $this->reader = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
-        } else {
-            throw new InvalidArgumentException('The configuration is invalid, at least one provider should be defined');
+            $this->readers[] = RabbitMQBuilder::create()->withConfig($config['provider']['rabbit'])->build();
+        }
+        if (isset($config['provider']['google'])) {
+            $this->readers[] = GoogleCloudBuilder::create()->withConfig($config['provider']['google'])->build();
         }
 
         if (isset($config['mapping'])) {
@@ -143,7 +146,7 @@ class ListenerBuilder
      */
     public function build(): Listener
     {
-        if (!$this->reader) {
+        if (empty($this->readers)) {
             throw new RuntimeException("You need to provide a configuration or a queue reader");
         }
 
@@ -159,7 +162,7 @@ class ListenerBuilder
             $this->logger = new NullLogger();
         }
 
-        return new Listener($this->reader, $this->factory, $this->monitor, $this->logger);
+        return new Listener($this->readers, $this->factory, $this->monitor, $this->logger);
     }
 
     /**

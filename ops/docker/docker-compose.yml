@@ -5,8 +5,16 @@ services:
     build: phpfarm
     volumes:
       - ../../:/app/domain-events
+    environment:
+      PUBSUB_EMULATOR_HOST: pubsub:8085
     links:
       - rabbit
+      - pubsub
+
+  pubsub:
+    image: adilsoncarvalho/gcloud-pubsub-emulator
+    ports:
+      - "8085:8085"
 
   rabbit:
     image: rabbitmq:3.7-management-alpine
