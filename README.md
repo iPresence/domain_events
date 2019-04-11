@@ -95,39 +95,40 @@ The library allows to build the publisher and the listener from a set configurat
 
 ```yaml
 # domain_events.yaml
-mapping:
-  event_name: Namespace/CustomDomainEvent
-
-provider:
-    rabbit:
-      host: 127.0.0.1
-      port: 5672
-      user: guest
-      pass: guest
-      vhost: /
-    
-      exchange:
-        name: domain-events
-        type: direct
-        passive: false
-        durable: true
-        autoDelete: false
-    
-      queue:
-        name: domain-events-test
-        bindings:
-          - event_1
-          - event_2
-        passive: false
-        durable: true
-        exclusive: false
-        autoDelete: false
-    
-      consumer:
-        noLocal: false
-        noAck: false
-        exclusive: false
-        noWait: false
+domain_events:
+  mapping:
+    event_name: Namespace/CustomDomainEvent
+  
+  provider:
+      rabbit:
+        host: 127.0.0.1
+        port: 5672
+        user: guest
+        pass: guest
+        vhost: /
+      
+        exchange:
+          name: domain-events
+          type: direct
+          passive: false
+          durable: true
+          autoDelete: false
+      
+        queue:
+          name: domain-events-test
+          bindings:
+            - event_1
+            - event_2
+          passive: false
+          durable: true
+          exclusive: false
+          autoDelete: false
+      
+        consumer:
+          noLocal: false
+          noAck: false
+          exclusive: false
+          noWait: false
 ```
 
 * `mapping`: A key-value array with the mapping between domain event names and classes. This is used to deserialize from JSON to PHP objects
