@@ -8,6 +8,7 @@ use Google\Cloud\PubSub\PubSubClient;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
 use IPresence\DomainEvents\Listener\Listener;
+use IPresence\DomainEvents\Listener\ListenerBuilder;
 use IPresence\DomainEvents\Publisher\Fallback\PublisherFileFallback;
 use IPresence\DomainEvents\Publisher\Publisher;
 use IPresence\DomainEvents\Queue\Google\GoogleCloudQueue;
@@ -119,7 +120,16 @@ class DomainEventsContext implements Context
     {
         $this->subscriber = new DomainEventSubscriberMock($event);
 
-        $this->listener = new Listener($this->queues, $this->factory, $this->monitor, $this->logger);
+        $builder = (new ListenerBuilder())
+            ->withLogger($this->logger)
+            ->withMonitor($this->monitor)
+            ->withIdleTime(100);
+
+        foreach ($this->queues as $reader) {
+            $builder->addReader($reader);
+        }
+
+        $this->listener = $builder->build();
         $this->listener->subscribe($this->subscriber);
     }
 

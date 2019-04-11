@@ -38,6 +38,11 @@ class ListenerBuilder
     private $logger;
 
     /**
+     * @var int
+     */
+    private $idleTime = 200000;
+
+    /**
      * Returns a new instance to start start building the listener
      *
      * @return ListenerBuilder
@@ -77,6 +82,10 @@ class ListenerBuilder
 
         if (isset($config['mapping'])) {
             $this->factory = new DomainEventFactory($config['mapping']);
+        }
+
+        if (isset($config['idle-time'])) {
+            $this->idleTime = (int) $config['idle-time'];
         }
 
         return $this;
@@ -140,6 +149,20 @@ class ListenerBuilder
     }
 
     /**
+     * Sets the idle time to wait between loops checking for new events if no there are no events
+     *
+     * @param int $idleTime
+     *
+     * @return $this
+     */
+    public function withIdleTime(int $idleTime)
+    {
+        $this->idleTime = $idleTime;
+
+        return $this;
+    }
+
+    /**
      * Builds the listener with the configured values
      *
      * @return Listener
@@ -162,7 +185,7 @@ class ListenerBuilder
             $this->logger = new NullLogger();
         }
 
-        return new Listener($this->readers, $this->factory, $this->monitor, $this->logger);
+        return new Listener($this->readers, $this->factory, $this->monitor, $this->logger, [], $this->idleTime);
     }
 
     /**
