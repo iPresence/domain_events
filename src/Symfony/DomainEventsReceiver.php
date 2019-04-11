@@ -5,7 +5,7 @@ namespace IPresence\DomainEvents\Symfony;
 use IPresence\DomainEvents\Listener\Listener;
 use Symfony\Component\Messenger\Transport\ReceiverInterface;
 
-class DomainEventReceiver implements ReceiverInterface
+class DomainEventsReceiver implements ReceiverInterface
 {
     /**
      * @var

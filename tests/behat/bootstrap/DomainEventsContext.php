@@ -20,12 +20,14 @@ use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchangeConfig;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueueConfig;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQQueue;
-use IPresence\DomainEvents\Symfony\DomainEventReceiver;
+use IPresence\DomainEvents\Symfony\DomainEventsReceiver;
+use IPresence\DomainEvents\Symfony\DomainEventsSender;
 use IPresence\Monitoring\Adapter\NullMonitor;
 use IPresence\Monitoring\Monitor;
 use PhpAmqpLib\Connection\AMQPLazyConnection;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\Messenger\Envelope;
 
 class DomainEventsContext implements Context
 {
@@ -175,11 +177,31 @@ class DomainEventsContext implements Context
     }
 
     /**
+     * @When /^I send a domain event with name "([^"]*)" through the Symfony sender$/
+     */
+    public function iSendADomainEventWithNameThroughTheSymfonySender($name)
+    {
+        $this->fallback = new PublisherFileFallback($this->factory, './');
+        $this->publisher = new Publisher($this->queues, $this->fallback, $this->monitor, $this->logger);
+
+        $sender = new DomainEventsSender($this->publisher);
+
+        $event = new DomainEvent(
+            'test',
+            $name,
+            'v1.0.0',
+            new \DateTimeImmutable()
+        );
+
+        $sender->send(new Envelope($event));
+    }
+
+    /**
      * @Then /^I should consume that event from the Symfony receiver$/
      */
     public function iShouldConsumeThatEventFromTheSymfonyReceiver()
     {
-        $receiver = new DomainEventReceiver($this->listener);
+        $receiver = new DomainEventsReceiver($this->listener);
         $receiver->receive(function() use($receiver) {
             $receiver->stop();
         });
