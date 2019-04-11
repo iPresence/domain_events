@@ -49,6 +49,10 @@ class RabbitMQConsumer
             $this->config->noAck()
         );
 
+        if (null === $message) {
+            return 0;
+        }
+
         $callable($message);
 
         return 1;
