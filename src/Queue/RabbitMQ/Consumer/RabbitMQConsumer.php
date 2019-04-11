@@ -39,9 +39,13 @@ class RabbitMQConsumer
     {
         $channel = $this->connection->channel();
 
-        $callable = function(AMQPMessage $message) use ($callback) {
-            call_user_func($callback, $message->body);
-            $message->delivery_info['channel']->basic_ack($message->delivery_info['delivery_tag']);
+        $callable = function(AMQPMessage $message) use ($callback, $channel) {
+            try {
+                call_user_func($callback, $message->body);
+                $channel->basic_ack($message->delivery_info['delivery_tag']);
+            } catch (\Throwable $exception) {
+                $channel->basic_nack($message->delivery_info['delivery_tag']);
+            }
         };
 
         $message = $channel->basic_get(
