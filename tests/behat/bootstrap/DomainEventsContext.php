@@ -19,6 +19,7 @@ use IPresence\DomainEvents\Queue\RabbitMQ\Exchange\RabbitMQExchangeConfig;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueue as Queue;
 use IPresence\DomainEvents\Queue\RabbitMQ\Queue\RabbitMQQueueConfig;
 use IPresence\DomainEvents\Queue\RabbitMQ\RabbitMQQueue;
+use IPresence\DomainEvents\Symfony\DomainEventReceiver;
 use IPresence\Monitoring\Adapter\NullMonitor;
 use IPresence\Monitoring\Monitor;
 use PhpAmqpLib\Connection\AMQPLazyConnection;
@@ -146,7 +147,7 @@ class DomainEventsContext implements Context
      */
     public function iShouldConsumeThatEvent()
     {
-        $this->listener->listen(1, 1);
+        $this->listener->listen();
         if (!$this->subscriber->wasExecuted()) {
             throw new \InvalidArgumentException('The subscriber should be called');
         }
@@ -157,9 +158,24 @@ class DomainEventsContext implements Context
      */
     public function iShouldNotConsumeThatEvent()
     {
-        $this->listener->listen(1, 1);
+        $this->listener->listen();
         if ($this->subscriber->wasExecuted()) {
             throw new \InvalidArgumentException('The subscriber should not be called');
+        }
+    }
+
+    /**
+     * @Then /^I should consume that event from the Symfony receiver$/
+     */
+    public function iShouldConsumeThatEventFromTheSymfonyReceiver()
+    {
+        $receiver = new DomainEventReceiver($this->listener);
+        $receiver->receive(function() use($receiver) {
+            $receiver->stop();
+        });
+
+        if (!$this->subscriber->wasExecuted()) {
+            throw new \InvalidArgumentException('The subscriber should be called');
         }
     }
 

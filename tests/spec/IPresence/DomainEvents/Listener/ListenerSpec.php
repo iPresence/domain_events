@@ -10,6 +10,7 @@ use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\Monitoring\Monitor;
 use PhpSpec\ObjectBehavior;
+use Prophecy\Argument;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -30,6 +31,27 @@ class ListenerSpec extends ObjectBehavior
     public function it_is_initializable()
     {
         $this->shouldHaveType('IPresence\DomainEvents\Listener\Listener');
+    }
+
+    public function it_reads_messages_from_all_the_readers(
+        QueueReader $reader1,
+        QueueReader $reader2
+    ) {
+        $reader1->read(Argument::type('callable'))->willReturn(1)->shouldBeCalled();
+        $reader2->read(Argument::type('callable'))->willReturn(3)->shouldBeCalled();
+
+        $this->listen();
+    }
+
+    public function it_handles_exceptions_in_readers(QueueReader $reader1, LoggerInterface $logger)
+    {
+        $exception = new \Exception("foo");
+
+        $reader1->read(Argument::type('callable'))->willThrow($exception);
+
+        $this->listen();
+
+        $logger->error('Unexpected exception while reading events', ['exception' => $exception])->shouldHaveBeenCalled();
     }
 
     public function it_notifies_the_subscribers(
@@ -80,13 +102,5 @@ class ListenerSpec extends ObjectBehavior
         $this->subscribe($subscriber3);
 
         $this->notify($json);
-    }
-
-    public function it_listen_for_events_in_all_readers(QueueReader $reader1, QueueReader $reader2)
-    {
-        $reader1->read([$this, 'notify'], 0)->willThrow(new StopReadingException());
-        $reader2->read([$this, 'notify'], 0)->willThrow(new StopReadingException());
-
-        $this->listen(0, 1);
     }
 }

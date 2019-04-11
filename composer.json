@@ -16,7 +16,8 @@
         "symfony/dependency-injection": "^4.2",
         "symfony/config": "^4.2",
         "symfony/http-kernel": "^4.2",
-        "google/cloud-pubsub": "^1.8"
+        "google/cloud-pubsub": "^1.8",
+        "symfony/messenger": "4.1.*"
     },
     "autoload": {
         "psr-4": {
