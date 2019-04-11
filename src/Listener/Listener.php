@@ -131,10 +131,7 @@ class Listener
             $this->monitor->end('domain_event.consumed', ['success' => true]);
         } catch (\Throwable $e) {
             $this->monitor->end('domain_event.consumed', ['success' => false]);
-            $this->logger->error("Error handling domain event {$event->name()}", [
-                'exception' => $e,
-                ''
-            ]);
+            $this->logger->error("Error handling domain event {$event->name()}", ['exception' => $e]);
         }
     }
 }
