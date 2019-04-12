@@ -59,7 +59,7 @@ class RabbitMQExchange
             }
 
             $msg = new AMQPMessage($json, ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
-            $channel->batch_basic_publish($msg, $this->config->name(), $event->name());
+            $channel->batch_basic_publish($msg, $this->config->name(), $event->fqn());
         }
 
         $channel->publish_batch();

@@ -117,8 +117,9 @@ domain_events:
         queue:
           name: domain-events-test
           bindings:
-            - event_1
-            - event_2
+            - origin_1.event_1
+            - origin_1.event_2
+            - origin_2.event_1
           passive: false
           durable: true
           exclusive: false

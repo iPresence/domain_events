@@ -111,6 +111,16 @@ class DomainEvent implements JsonDeserializable, JsonSerializable
     }
 
     /**
+     * Returns the fully qualified name of the event
+     *
+     * @return string
+     */
+    public function fqn(): string
+    {
+        return $this->origin().".".$this->name();
+    }
+
+    /**
      * @return string
      */
     public function version(): string
