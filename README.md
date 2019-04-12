@@ -97,8 +97,8 @@ The library allows to build the publisher and the listener from a set configurat
 # domain_events.yaml
 domain_events:
   mapping:
-    event_name: Namespace/CustomDomainEvent
-  
+    origin.event_name: Namespace/CustomDomainEvent
+
   provider:
       rabbit:
         host: 127.0.0.1

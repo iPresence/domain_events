@@ -36,20 +36,20 @@ class DomainEventFactory
             throw new InvalidArgumentException("Cannot reconstruct domain event, JSON received: $json");
         }
 
-        return $this->create($data['name'], $data);
+        return $this->create($data['origin'].".".$data['name'], $data);
     }
 
     /**
-     * @param string $eventName
+     * @param string $fqEventName
      * @param array  $data
      *
      * @return DomainEvent
      * @throws \Exception
      */
-    private function create(string $eventName, array $data): DomainEvent
+    private function create(string $fqEventName, array $data): DomainEvent
     {
         foreach ($this->mapping as $name => $class) {
-            if ($name == $eventName) {
+            if ($name == $fqEventName) {
                 if (in_array(JsonDeserializable::class, class_implements($class))) {
                     return $class::jsonDeserialize($data);
                 }
