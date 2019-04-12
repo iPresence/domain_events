@@ -37,11 +37,6 @@ class RabbitMQQueue implements QueueReader, QueueWriter
     protected $logger;
 
     /**
-     * @var string
-     */
-    protected $consumerTag = '';
-
-    /**
      * @param Exchange        $exchange
      * @param Queue           $queue
      * @param Consumer        $consumer
@@ -57,26 +52,19 @@ class RabbitMQQueue implements QueueReader, QueueWriter
 
     /**
      * @param callable  $callback
-     * @param int|float $timeout
      *
      * @throws QueueException
-     * @throws StopReadingException
      */
-    public function read(callable $callback, $timeout = 0)
+    public function read(callable $callback): int
     {
         $exchange = $this->initializeExchange();
         $queue = $this->initializeQueue($exchange);
 
         try {
             $this->logger->debug("Started reading events from RabbitMQ");
-            $this->consumer->start($queue, $callback, $timeout);
-        } catch(AMQPTimeoutException $e) {
-            $this->logger->debug('Timeout consuming events', ['exception' => $e->getMessage()]);
-            $this->consumer->stop();
-            throw new StopReadingException("Timed out at $timeout seconds while reading", 0, $e);
+            return $this->consumer->get($queue, $callback);
         } catch(\Exception $e) {
             $this->logger->error('Error while consuming events', ['exception' => $e->getMessage()]);
-            $this->consumer->stop();
             throw new QueueException($e->getMessage(), $e->getCode());
         }
     }

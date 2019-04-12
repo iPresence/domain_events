@@ -2,16 +2,16 @@
 
 namespace IPresence\DomainEvents\Listener;
 
-use Exception;
 use IPresence\DomainEvents\DomainEvent;
 use IPresence\DomainEvents\DomainEventFactory;
-use IPresence\DomainEvents\Queue\Exception\StopReadingException;
 use IPresence\DomainEvents\Queue\QueueReader;
 use IPresence\Monitoring\Monitor;
 use Psr\Log\LoggerInterface;
 
 class Listener
 {
+    private const DEFAULT_IDLE_SLEEP = 200000;
+
     /**
      * @var QueueReader[]
      */
@@ -38,24 +38,32 @@ class Listener
     private $subscribers = [];
 
     /**
+     * @var int
+     */
+    private $idleSleep;
+
+    /**
      * @param QueueReader[]           $readers
      * @param DomainEventFactory      $factory
      * @param Monitor                 $monitor
      * @param LoggerInterface         $logger
      * @param DomainEventSubscriber[] $subscribers
+     * @param int                     $idleSleep
      */
     public function __construct(
         array $readers,
         DomainEventFactory $factory,
         Monitor $monitor,
         LoggerInterface $logger,
-        array $subscribers = []
+        array $subscribers = [],
+        int $idleSleep = self::DEFAULT_IDLE_SLEEP
     ) {
         $this->readers = $readers;
         $this->factory = $factory;
         $this->monitor = $monitor;
         $this->logger = $logger;
         $this->subscribers = $subscribers;
+        $this->idleSleep = $idleSleep;
     }
 
     /**
@@ -70,45 +78,28 @@ class Listener
     }
 
     /**
-     * @param int $timeout
-     * @param int $maxIterations
+     * Listen to domain events without interruption while cycling readers
      */
-    public function listen($timeout = 0, $maxIterations = 0)
+    public function listen()
     {
-        $iteration = 0;
-        while ($maxIterations == 0 || $maxIterations > $iteration) {
-            foreach ($this->readers as $reader) {
-                $this->read($reader, $timeout);
-            }
-            $iteration++;
-        }
-    }
-
-    /**
-     * Reads the message from the queue.
-     * Will return when there are no more messages to consume during the $timeout time.
-     *
-     * @param QueueReader $reader
-     * @param int         $timeout
-     */
-    private function read(QueueReader $reader, int $timeout)
-    {
-        while (true) {
+        $messagesRead = 0;
+        foreach ($this->readers as $reader) {
             try {
-                $reader->read([$this, 'notify'], $timeout);
-            } catch(StopReadingException $e) {
-                break;
-            } catch (Exception $e) {
-                $this->logger->error('Not controllable exception while reading events', ['exception' => $e->getMessage()]);
-                break;
+                $messagesRead += $reader->read([$this, 'notify']);
+            } catch (\Throwable $e) {
+                $this->logger->error('Unexpected exception while reading events', ['exception' => $e]);
             }
+        }
+
+        if ($messagesRead <= 0) {
+            usleep($this->idleSleep);
         }
     }
 
     /**
      * @param string $json
      *
-     * @throws Exception
+     * @throws \Exception
      */
     public function notify(string $json)
     {
@@ -138,9 +129,9 @@ class Listener
         try {
             $subscriber->execute($event);
             $this->monitor->end('domain_event.consumed', ['success' => true]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->monitor->end('domain_event.consumed', ['success' => false]);
-            $this->logger->error("Domain Event {$event->name()} received, notifying subscribers");
+            $this->logger->error("Error handling domain event {$event->name()}", ['exception' => $e]);
         }
     }
 }

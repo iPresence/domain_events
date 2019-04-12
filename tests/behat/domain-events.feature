@@ -35,3 +35,9 @@ Feature: Simulate producing and consuming domain events
     Given The writers are not working
     When I send a domain event with name "test"
     Then I have this event stored
+
+  Scenario: I consume domain events from a Symfony consumer
+    Given I have a rabbit queue ready to handle domain events
+    And I am subscribed to "test" events
+    When I send a domain event with name "test" through the Symfony sender
+    Then I should consume that event from the Symfony receiver

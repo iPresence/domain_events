@@ -50,29 +50,25 @@ class GoogleCloudQueue implements QueueReader, QueueWriter
 
     /**
      * @param callable $callback
-     * @param int      $timeout
+     *
+     * @return int
      *
      * @throws QueueException
-     * @throws StopReadingException
      */
-    public function read(callable $callback, $timeout = 0)
+    public function read(callable $callback): int
     {
         $this->logger->debug("Started reading events from Google Pub/Sub");
 
         $topic = $this->getTopic($this->topicName);
         $subscription = $this->getSubscription($this->subscriptionName, $topic->name());
 
-        while (true) {
-            $messages = $subscription->pull(['returnImmediately' => true]);
-            if (empty($messages)) {
-                throw new StopReadingException();
-            }
-
-            foreach ($messages as $message) {
-                call_user_func($callback, $message->data());
-                $subscription->acknowledge($message);
-            }
+        $messages = $subscription->pull(['returnImmediately' => true]);
+        foreach ($messages as $message) {
+            call_user_func($callback, $message->data());
+            $subscription->acknowledge($message);
         }
+
+        return count($messages);
     }
 
     /**

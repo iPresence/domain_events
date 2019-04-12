@@ -40,7 +40,7 @@ class RabbitMQQueueSpec extends ObjectBehavior
     ) {
         $logger->error(Argument::cetera())->shouldBeCalled();
         $exchange->create()->willThrow(new Exception());
-        $this->shouldThrow(new QueueException())->duringRead(function(){}, 0);
+        $this->shouldThrow(new QueueException())->duringRead(function(){});
     }
 
     public function it_throws_an_exception_if_can_not_create_or_bind_the_queue(
@@ -51,7 +51,7 @@ class RabbitMQQueueSpec extends ObjectBehavior
         $logger->error(Argument::cetera())->shouldBeCalled();
         $exchange->create()->willReturn('exchanged');
         $queue->createAndBindTo('exchanged')->willThrow(new Exception());
-        $this->shouldThrow(new QueueException())->duringRead(function(){}, 0);
+        $this->shouldThrow(new QueueException())->duringRead(function(){});
     }
 
     public function it_throws_an_exception_if_can_not_start_the_consumer(
@@ -66,39 +66,18 @@ class RabbitMQQueueSpec extends ObjectBehavior
         $logger->error(Argument::cetera())->shouldBeCalled();
         $exchange->create()->willReturn('exchanged');
         $queue->createAndBindTo('exchanged')->willReturn('queue');
-        $consumer->start('queue', $callable, 0)->willThrow(new Exception());
-        $consumer->stop()->shouldBeCalled();
+        $consumer->get('queue', $callable)->willThrow(new Exception());
 
-        $this->shouldThrow(new QueueException())->duringRead($callable, 0);
+        $this->shouldThrow(new QueueException())->duringRead($callable);
     }
 
-    public function it_stops_the_consumer_if_there_is_a_timeout(
-        Exchange $exchange,
-        Queue $queue,
-        Consumer $consumer,
-        LoggerInterface $logger
-    ) {
-        $callable = function(){};
-        $exception = new AMQPTimeoutException();
-
-        $logger->debug("Started reading events from RabbitMQ")->shouldBeCalled();
-        $logger->debug('Timeout consuming events', Argument::cetera())->shouldBeCalled();
-        $exchange->create()->willReturn('exchanged');
-        $queue->createAndBindTo('exchanged')->willReturn('queue');
-        $consumer->start('queue', $callable, 2)->willThrow($exception);
-        $consumer->stop()->shouldBeCalled();
-
-        $this->shouldThrow(StopReadingException::class)->duringRead($callable, 2);
-    }
-
-    public function it_consumes(Exchange $exchange, Queue $queue, Consumer $consumer)
+    public function it_get_messages(Exchange $exchange, Queue $queue, Consumer $consumer)
     {
         $callable = function(){};
 
         $exchange->create()->willReturn('exchanged');
         $queue->createAndBindTo('exchanged')->willReturn('queue');
-        $consumer->start('queue', $callable, 2)->shouldBeCalled();
-        $consumer->stop()->shouldNotBeCalled();
+        $consumer->get('queue', $callable)->shouldBeCalled();
 
         $this->read($callable, 2);
     }
