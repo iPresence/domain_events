@@ -13,8 +13,8 @@ use Webmozart\Assert\Assert;
 class DomainEventFactorySpec extends ObjectBehavior
 {
     const MAPPING = [
-        'serializable_name' => 'spec\IPresence\DomainEvents\DeserializableDomainEventMock',
-        'not_serializable_name' => 'spec\IPresence\DomainEvents\NotDeserializableDomainEventMock',
+        'test.serializable_name' => 'spec\IPresence\DomainEvents\DeserializableDomainEventMock',
+        'test.not_serializable_name' => 'spec\IPresence\DomainEvents\NotDeserializableDomainEventMock',
     ];
 
     public function let()
