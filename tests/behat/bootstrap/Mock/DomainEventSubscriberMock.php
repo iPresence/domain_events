@@ -32,7 +32,7 @@ class DomainEventSubscriberMock implements DomainEventSubscriber
      */
     public function isSubscribed(DomainEvent $event): bool
     {
-        return $event->name() == $this->eventName;
+        return $event->fqn() == $this->eventName;
     }
 
     /**
